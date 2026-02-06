@@ -2,12 +2,6 @@ import { z } from "zod"
 
 export const TASK_STATUSES = ["todo", "doing", "done"] as const
 export const PRIORITIES = ["low", "medium", "high"] as const
-export const IMPACT_TAGS = [
-  "urgente",
-  "importante",
-  "recurrente",
-  "bajo impacto",
-] as const
 
 const changeSchema = z.object({
   field: z.string(),
@@ -56,7 +50,6 @@ export const taskFormSchema = z.object({
     .min(1, "La estimacion debe ser mayor que 0."),
   fechaLimite: z.string().optional(),
   estado: z.enum(TASK_STATUSES),
-  impacto: z.enum(IMPACT_TAGS),
   observacionesJavi: z.string().optional(),
   rubricaNota: z.preprocess(
     (value) => (typeof value === "number" && Number.isNaN(value) ? undefined : value),

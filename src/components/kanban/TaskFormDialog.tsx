@@ -8,7 +8,6 @@ import { v4 as uuidv4 } from "uuid"
 
 import type { Task } from "@/types"
 import {
-  IMPACT_TAGS,
   PRIORITIES,
   TASK_STATUSES,
   taskFormSchema,
@@ -46,13 +45,6 @@ const STATUS_LABELS: Record<(typeof TASK_STATUSES)[number], string> = {
   done: "Completado",
 }
 
-const IMPACT_LABELS: Record<(typeof IMPACT_TAGS)[number], string> = {
-  urgente: "\u{1F534} [CRITICO] - Impacto inmediato",
-  importante: "\u{1F7E0} [IMPORTANTE] - Aporta valor, no corre prisa",
-  recurrente: "\u{1F535} [RECURRENTE] - Algo que haces siempre",
-  "bajo impacto": "\u{26AA} [BAJO IMPACTO] - Si sobra tiempo",
-}
-
 type TaskFormDialogProps = {
   triggerLabel: string
   title: string
@@ -73,16 +65,6 @@ const parseTags = (input: string) =>
     )
   )
 
-const isImpactTag = (tag: string) =>
-  IMPACT_TAGS.some((impact) => normalizeTag(tag) === normalizeTag(impact))
-
-const normalizeTag = (tag: string) =>
-  tag
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-
 const toDateInputValue = (iso?: string) => (iso ? iso.slice(0, 10) : "")
 
 const defaultValuesFromTask = (task?: Task): TaskFormValues => {
@@ -95,25 +77,20 @@ const defaultValuesFromTask = (task?: Task): TaskFormValues => {
       estimacionMin: 60,
       fechaLimite: "",
       estado: "todo",
-      impacto: "importante",
       observacionesJavi: "",
       rubricaNota: undefined,
       rubricaComentario: "",
     }
   }
 
-  const impactTag = task.tags.find(isImpactTag) ?? "importante"
-  const extraTags = task.tags.filter((tag) => !isImpactTag(tag))
-
   return {
     titulo: task.titulo,
     descripcion: task.descripcion ?? "",
     prioridad: task.prioridad,
-    tags: extraTags.join(", "),
+    tags: task.tags.join(", "),
     estimacionMin: task.estimacionMin,
     fechaLimite: toDateInputValue(task.fechaLimite),
     estado: task.estado,
-    impacto: impactTag as TaskFormValues["impacto"],
     observacionesJavi: task.observacionesJavi ?? "",
     rubricaNota: task.rubricaNota,
     rubricaComentario: task.rubricaComentario ?? "",
@@ -126,7 +103,6 @@ const buildTaskFromValues = (
   includeGodFields?: boolean
 ): Task => {
   const extraTags = parseTags(values.tags ?? "")
-  const tags = Array.from(new Set([values.impacto, ...extraTags]))
   const fechaLimite = values.fechaLimite
     ? new Date(`${values.fechaLimite}T00:00:00`).toISOString()
     : undefined
@@ -138,7 +114,7 @@ const buildTaskFromValues = (
     titulo: values.titulo.trim(),
     descripcion: values.descripcion?.trim() || undefined,
     prioridad: values.prioridad,
-    tags,
+    tags: extraTags,
     estimacionMin: values.estimacionMin,
     fechaCreacion: base?.fechaCreacion ?? new Date().toISOString(),
     fechaLimite,
@@ -230,37 +206,13 @@ export function TaskFormDialog({
           </div>
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="task-impact">
-              Etiqueta de impacto
-            </label>
-            <Controller
-              control={form.control}
-              name="impacto"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="task-impact">
-                    <SelectValue placeholder="Selecciona impacto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {IMPACT_TAGS.map((impact) => (
-                      <SelectItem key={impact} value={impact}>
-                        {IMPACT_LABELS[impact]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-
-          <div className="grid gap-2">
             <label className="text-sm font-medium" htmlFor="task-tags">
-              Tags adicionales
+              Tags
             </label>
             <Input
               id="task-tags"
               {...form.register("tags")}
-              placeholder="forense, red-team, phishing"
+              placeholder="urgente, forense, phishing"
             />
           </div>
 
