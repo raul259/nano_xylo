@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import type { AuditLog, AuditAction } from "@/types"
+import type { AuditAction, AuditLog } from "@/types"
 import {
   Table,
   TableBody,
@@ -36,14 +36,14 @@ function formatValue(value: unknown) {
     return value.join(", ")
   }
   if (value === null || value === undefined || value === "") {
-    return "—"
+    return "-"
   }
   return String(value)
 }
 
 function formatChanges(log: AuditLog) {
   if (!log.changes || log.changes.length === 0) {
-    return "—"
+    return "-"
   }
   return log.changes
     .map(
@@ -85,13 +85,13 @@ export function AuditTable({ logs }: AuditTableProps) {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                  ACTION_STYLES[log.action]
+                  ACTION_STYLES[log.accion]
                 )}
               >
-                {ACTION_LABELS[log.action]}
+                {ACTION_LABELS[log.accion]}
               </span>
             </TableCell>
-            <TableCell className="font-medium">{log.taskTitle}</TableCell>
+            <TableCell className="font-medium">{log.taskTitulo}</TableCell>
             <TableCell className="text-muted-foreground text-xs">
               {log.userLabel}
             </TableCell>
