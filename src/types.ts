@@ -1,12 +1,20 @@
 export type TaskStatus = "todo" | "doing" | "done"
 
+export type Priority = "low" | "medium" | "high"
+
 export type Task = {
   id: string
-  title: string
-  description?: string
+  titulo: string
+  descripcion?: string
+  prioridad: Priority
   tags: string[]
-  status: TaskStatus
-  createdAt: string
+  estimacionMin: number
+  fechaCreacion: string
+  fechaLimite?: string
+  estado: TaskStatus
+  observacionesJavi?: string
+  rubricaNota?: number
+  rubricaComentario?: string
 }
 
 export type AuditAction = "CREATE" | "UPDATE" | "MOVE" | "DELETE"
@@ -14,9 +22,9 @@ export type AuditAction = "CREATE" | "UPDATE" | "MOVE" | "DELETE"
 export type AuditLog = {
   id: string
   timestamp: string
-  action: AuditAction
+  accion: AuditAction
   taskId: string
-  taskTitle: string
+  taskTitulo: string
   userLabel: string
   changes?: Array<{
     field: keyof Task | string
