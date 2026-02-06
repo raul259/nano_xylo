@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -310,6 +311,7 @@ export default function KanbanPage() {
               className="hidden"
               onChange={handleImportChange}
             />
+            <ThemeToggle />
             <div className="flex items-center gap-2 rounded-md border px-3 py-2">
               <Switch
                 checked={godMode}
