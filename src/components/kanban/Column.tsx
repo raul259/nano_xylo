@@ -1,20 +1,44 @@
 "use client"
 
 import * as React from "react"
-import { useDroppable, useDraggable } from "@dnd-kit/core"
+import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVerticalIcon } from "lucide-react"
+import { CalendarIcon, ClockIcon, GripVerticalIcon, Trash2Icon } from "lucide-react"
 
+import type { Priority, Task, TaskStatus } from "@/types"
 import { cn } from "@/lib/utils"
-import type { Task, TaskStatus } from "@/types"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { TaskFormDialog } from "@/components/kanban/TaskFormDialog"
 
 type ColumnProps = {
   id: TaskStatus
   title: string
   tasks: Task[]
+  godMode: boolean
+  onUpdateTask: (task: Task) => void
+  onDeleteTask: (taskId: string) => void
 }
 
-export function Column({ id, title, tasks }: ColumnProps) {
+export function Column({
+  id,
+  title,
+  tasks,
+  godMode,
+  onUpdateTask,
+  onDeleteTask,
+}: ColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id })
 
   return (
@@ -38,18 +62,32 @@ export function Column({ id, title, tasks }: ColumnProps) {
             Sin misiones en esta columna.
           </div>
         ) : (
-          tasks.map((task) => <TaskCard key={task.id} task={task} />)
+          tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              godMode={godMode}
+              onUpdateTask={onUpdateTask}
+              onDeleteTask={onDeleteTask}
+            />
+          ))
         )}
       </div>
     </section>
   )
 }
 
-function TaskCard({ task }: { task: Task }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-    })
+type TaskCardProps = {
+  task: Task
+  godMode: boolean
+  onUpdateTask: (task: Task) => void
+  onDeleteTask: (taskId: string) => void
+}
+
+function TaskCard({ task, godMode, onUpdateTask, onDeleteTask }: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+  })
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -61,20 +99,31 @@ function TaskCard({ task }: { task: Task }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-background flex cursor-grab flex-col gap-2 rounded-md border p-3 shadow-sm active:cursor-grabbing",
+        "bg-background flex flex-col gap-3 rounded-md border p-3 shadow-sm",
         isDragging && "opacity-60"
       )}
-      {...attributes}
-      {...listeners}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold leading-snug">{task.title}</h3>
-        <GripVerticalIcon className="text-muted-foreground h-4 w-4" />
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold leading-snug">{task.titulo}</h3>
+          <Badge variant="outline" className={getPriorityMeta(task.prioridad).className}>
+            {getPriorityMeta(task.prioridad).label}
+          </Badge>
+        </div>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-md p-1 transition focus-visible:outline-none focus-visible:ring-2"
+          aria-label="Arrastrar tarea"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVerticalIcon className="h-4 w-4" />
+        </button>
       </div>
 
-      {task.description ? (
+      {task.descripcion ? (
         <p className="text-muted-foreground text-xs leading-relaxed">
-          {task.description}
+          {task.descripcion}
         </p>
       ) : null}
 
@@ -83,19 +132,82 @@ function TaskCard({ task }: { task: Task }) {
           {task.tags.map((tag) => {
             const meta = getTagMeta(tag)
             return (
-              <span
+              <Badge
+                variant="outline"
                 key={tag}
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide",
+                  "text-[10px] font-semibold uppercase tracking-wide",
                   meta.className
                 )}
               >
                 {meta.label}
-              </span>
+              </Badge>
             )
           })}
         </div>
       ) : null}
+
+      <div className="text-muted-foreground flex flex-wrap gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <ClockIcon className="h-3.5 w-3.5" />
+          <span>{task.estimacionMin} min</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <CalendarIcon className="h-3.5 w-3.5" />
+          <span>{task.fechaLimite ? formatDate(task.fechaLimite) : "Sin limite"}</span>
+        </div>
+      </div>
+
+      {godMode ? (
+        <div className="rounded-md border border-dashed p-2 text-xs">
+          <div className="font-semibold">Observaciones de Javi</div>
+          <p className="text-muted-foreground mt-1">
+            {task.observacionesJavi || "Sin observaciones"}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="info" className="text-[10px]">
+              Rubrica: {typeof task.rubricaNota === "number" ? task.rubricaNota : "Sin evaluar"}
+            </Badge>
+            {task.rubricaComentario ? (
+              <span className="text-muted-foreground">{task.rubricaComentario}</span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <TaskFormDialog
+          triggerLabel="Editar"
+          title="Editar mision"
+          description="Ajusta los detalles y guarda los cambios."
+          submitLabel="Guardar cambios"
+          initialTask={task}
+          onSubmitTask={onUpdateTask}
+          showGodFields={godMode}
+        />
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm" aria-label="Eliminar tarea">
+              <Trash2Icon className="mr-2 h-4 w-4" />
+              Eliminar
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar mision</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta accion no se puede deshacer. Se eliminara la mision "{task.titulo}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onDeleteTask(task.id)}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </article>
   )
 }
@@ -112,28 +224,28 @@ const TAG_MAP: Array<{
   {
     keywords: ["urgente", "critico", "critica"],
     meta: {
-      label: "🔴 [CRÍTICO] - Impacto inmediato",
+      label: "\u{1F534} [CRITICO] - Impacto inmediato",
       className: "bg-red-100 text-red-800 border border-red-200",
     },
   },
   {
     keywords: ["importante"],
     meta: {
-      label: "🟠 [IMPORTANTE] - Aporta valor, no corre prisa",
+      label: "\u{1F7E0} [IMPORTANTE] - Aporta valor, no corre prisa",
       className: "bg-orange-100 text-orange-800 border border-orange-200",
     },
   },
   {
     keywords: ["recurrente"],
     meta: {
-      label: "🔵 [RECURRENTE] - Algo que haces siempre",
+      label: "\u{1F535} [RECURRENTE] - Algo que haces siempre",
       className: "bg-sky-100 text-sky-800 border border-sky-200",
     },
   },
   {
     keywords: ["bajo impacto"],
     meta: {
-      label: "⚪ [BAJO IMPACTO] - Si sobra tiempo",
+      label: "\u{26AA} [BAJO IMPACTO] - Si sobra tiempo",
       className: "bg-slate-100 text-slate-700 border border-slate-200",
     },
   },
@@ -165,5 +277,37 @@ function getTagMeta(tag: string): TagMeta {
   return {
     ...DEFAULT_TAG_META,
     label: tag,
+  }
+}
+
+type PriorityMeta = {
+  label: string
+  className: string
+}
+
+const PRIORITY_META: Record<Priority, PriorityMeta> = {
+  low: {
+    label: "Baja",
+    className: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  },
+  medium: {
+    label: "Media",
+    className: "bg-amber-100 text-amber-800 border border-amber-200",
+  },
+  high: {
+    label: "Alta",
+    className: "bg-rose-100 text-rose-800 border border-rose-200",
+  },
+}
+
+function getPriorityMeta(priority: Priority) {
+  return PRIORITY_META[priority]
+}
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString("es-ES")
+  } catch {
+    return iso
   }
 }
