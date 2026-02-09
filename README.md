@@ -29,7 +29,7 @@ Luego abre el navegador y crea una misión con el botón “Nueva misión”.
 - `public/capturas/auditoria.png`
 
 ## link de Vercel
-
+https://nano-xylo.vercel.app/
 ## Checklist de requisitos
 - [x] 3 columnas fijas Todo / Doing / Done
 - [x] Crear, editar y borrar tareas
