@@ -56,6 +56,26 @@ export const taskFormSchema = z.object({
     z.number().int().min(0).max(10).optional()
   ),
   rubricaComentario: z.string().optional(),
+}).superRefine((values, ctx) => {
+  if (!values.fechaLimite) return
+  const dueDate = new Date(`${values.fechaLimite}T00:00:00`)
+  if (Number.isNaN(dueDate.getTime())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fechaLimite"],
+      message: "La fecha limite no es valida.",
+    })
+    return
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (dueDate < today) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["fechaLimite"],
+      message: "La fecha limite no puede ser anterior a hoy.",
+    })
+  }
 })
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>

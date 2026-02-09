@@ -90,8 +90,11 @@ function TaskCard({ task, godMode, onUpdateTask, onDeleteTask }: TaskCardProps) 
   })
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: "transform 150ms ease",
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    transition: isDragging ? "none" : "transform 110ms ease-out",
+    willChange: "transform",
   }
 
   return (
@@ -100,7 +103,7 @@ function TaskCard({ task, godMode, onUpdateTask, onDeleteTask }: TaskCardProps) 
       style={style}
       className={cn(
         "bg-background flex flex-col gap-3 rounded-md border p-3 shadow-sm",
-        isDragging && "opacity-60"
+        isDragging && "opacity-85"
       )}
     >
       <div className="flex items-start justify-between gap-2">

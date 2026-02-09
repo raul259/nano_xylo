@@ -66,6 +66,13 @@ const parseTags = (input: string) =>
   )
 
 const toDateInputValue = (iso?: string) => (iso ? iso.slice(0, 10) : "")
+const todayInputValue = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
 
 const defaultValuesFromTask = (task?: Task): TaskFormValues => {
   if (!task) {
@@ -295,9 +302,15 @@ export function TaskFormDialog({
                   id="task-due"
                   type="date"
                   className="pl-9"
+                  min={todayInputValue()}
                   {...form.register("fechaLimite")}
                 />
               </div>
+              {form.formState.errors.fechaLimite ? (
+                <p className="text-destructive text-xs font-medium">
+                  {form.formState.errors.fechaLimite.message}
+                </p>
+              ) : null}
             </div>
           </div>
 
