@@ -4,6 +4,7 @@ export type Priority = "low" | "medium" | "high"
 
 export type Task = {
   id: string
+  publicId?: string
   titulo: string
   descripcion?: string
   prioridad: Priority
@@ -26,6 +27,8 @@ export type AuditLog = {
   taskId: string
   taskTitulo: string
   userLabel: string
+  prevHash?: string
+  hash?: string
   changes?: Array<{
     field: keyof Task | string
     oldValue?: unknown

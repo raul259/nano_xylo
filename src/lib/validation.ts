@@ -16,11 +16,14 @@ export const auditLogSchema = z.object({
   taskId: z.string().min(1),
   taskTitulo: z.string().min(1),
   userLabel: z.string().min(1),
+  prevHash: z.string().optional(),
+  hash: z.string().optional(),
   changes: z.array(changeSchema).optional(),
 })
 
 export const taskSchema = z.object({
   id: z.string().min(1),
+  publicId: z.string().min(1).optional(),
   titulo: z.string().min(3),
   descripcion: z.string().optional(),
   prioridad: z.enum(PRIORITIES),

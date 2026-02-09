@@ -28,8 +28,13 @@ Luego abre el navegador y crea una misión con el botón “Nueva misión”.
 - `public/capturas/formulario.png`
 - `public/capturas/auditoria.png`
 
-## link de Vercel
+## Link de Vercel
 https://nano-xylo.vercel.app/
+
+## Futuras mejoras (hashing)
+- Identificador público por hash: generar un `publicId` estable a partir del `id` interno para compartir referencias sin exponer el ID real.
+- Cadena de auditoría: encadenar hashes en los logs para detectar alteraciones en el historial.
+
 ## Checklist de requisitos
 - [x] 3 columnas fijas Todo / Doing / Done
 - [x] Crear, editar y borrar tareas

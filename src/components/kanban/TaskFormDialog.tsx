@@ -13,6 +13,7 @@ import {
   taskFormSchema,
   type TaskFormValues,
 } from "@/lib/validation"
+import { createPublicId } from "@/lib/hash"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -109,6 +110,7 @@ const buildTaskFromValues = (
   base?: Task,
   includeGodFields?: boolean
 ): Task => {
+  const id = base?.id ?? uuidv4()
   const extraTags = parseTags(values.tags ?? "")
   const fechaLimite = values.fechaLimite
     ? new Date(`${values.fechaLimite}T00:00:00`).toISOString()
@@ -117,7 +119,8 @@ const buildTaskFromValues = (
     typeof values.rubricaNota === "number" ? values.rubricaNota : undefined
 
   return {
-    id: base?.id ?? uuidv4(),
+    id,
+    publicId: base?.publicId ?? createPublicId(id),
     titulo: values.titulo.trim(),
     descripcion: values.descripcion?.trim() || undefined,
     prioridad: values.prioridad,

@@ -102,7 +102,7 @@ function TaskCard({ task, godMode, onUpdateTask, onDeleteTask }: TaskCardProps) 
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-background flex flex-col gap-3 rounded-md border p-3 shadow-sm",
+        "bg-card text-card-foreground flex flex-col gap-3 rounded-md border p-3 shadow-sm",
         isDragging && "opacity-85"
       )}
     >

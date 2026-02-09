@@ -17,9 +17,12 @@ import {
   createAuditLog,
   getFromStorage,
   saveToStorage,
+  verifyLogChain,
   validateImportData,
 } from "@/lib/storage"
+import { sha256Hex } from "@/lib/hash"
 import { filterTasks, parseSearchQuery } from "@/lib/query"
+import { cn } from "@/lib/utils"
 import { Column } from "@/components/kanban/Column"
 import { CreateTask } from "@/components/kanban/CreateTask"
 import { AuditTable } from "@/components/audit/AuditTable"
@@ -64,12 +67,14 @@ export default function KanbanPage() {
   }, [])
 
   const persist = (data: BoardData) => {
-    setBoardData(data)
-    saveToStorage(data)
+    const normalized = saveToStorage(data)
+    setBoardData(normalized)
   }
 
   const addTask = (newTask: Task) => {
-    const newLog = createAuditLog("CREATE", newTask.titulo, newTask.id, undefined, newTask)
+    const newLog = createAuditLog("CREATE", newTask.titulo, newTask.id, undefined, newTask, {
+      prevHash: boardData.logs[0]?.hash,
+    })
     const newData = {
       tasks: [newTask, ...boardData.tasks],
       logs: [newLog, ...boardData.logs],
@@ -86,13 +91,22 @@ export default function KanbanPage() {
       updatedTask.titulo,
       updatedTask.id,
       previousTask,
-      updatedTask
+      updatedTask,
+      { prevHash: boardData.logs[0]?.hash }
     )
     const newData = {
       tasks: boardData.tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
       logs: [newLog, ...boardData.logs],
     }
     persist(newData)
+    if (
+      godMode &&
+      (previousTask.rubricaNota !== updatedTask.rubricaNota ||
+        previousTask.rubricaComentario !== updatedTask.rubricaComentario ||
+        previousTask.observacionesJavi !== updatedTask.observacionesJavi)
+    ) {
+      void exportData(newData)
+    }
     toast.success("Mision actualizada")
   }
 
@@ -104,7 +118,8 @@ export default function KanbanPage() {
       previousTask.titulo,
       taskId,
       previousTask,
-      undefined
+      undefined,
+      { prevHash: boardData.logs[0]?.hash }
     )
     const newData = {
       tasks: boardData.tasks.filter((task) => task.id !== taskId),
@@ -129,7 +144,8 @@ export default function KanbanPage() {
       taskToMove.titulo,
       taskId,
       taskToMove,
-      newTask
+      newTask,
+      { prevHash: boardData.logs[0]?.hash }
     )
 
     const updatedTasks = boardData.tasks.map((task) =>
@@ -156,6 +172,11 @@ export default function KanbanPage() {
       return matchesAction && matchesTask
     })
   }, [boardData.logs, auditAction, auditTaskId])
+
+  const logChainStatus = React.useMemo(
+    () => verifyLogChain(boardData.logs),
+    [boardData.logs]
+  )
 
   const handleCopySummary = async () => {
     const counts = filteredLogs.reduce<Record<AuditAction, number>>(
@@ -185,8 +206,12 @@ export default function KanbanPage() {
     }
   }
 
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(boardData, null, 2)], {
+  const exportData = async (data: BoardData) => {
+    const hash = await sha256Hex(JSON.stringify(data))
+    const payload = hash
+      ? { data, meta: { hash, algo: "SHA-256" } }
+      : { data }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     })
     const url = URL.createObjectURL(blob)
@@ -196,6 +221,10 @@ export default function KanbanPage() {
     anchor.click()
     URL.revokeObjectURL(url)
     toast.success("Exportacion lista")
+  }
+
+  const handleExport = async () => {
+    await exportData(boardData)
   }
 
   const handleImportClick = () => {
@@ -210,8 +239,20 @@ export default function KanbanPage() {
     setImportErrors(null)
     try {
       const content = await file.text()
-      const raw = JSON.parse(content)
-      const result = validateImportData(raw)
+      const parsed = JSON.parse(content)
+      const payload =
+        parsed && typeof parsed === "object" && "data" in parsed ? parsed : null
+      const rawData = payload ? (payload as { data: unknown }).data : parsed
+      if (payload && (payload as { meta?: { hash?: string } }).meta?.hash) {
+        const expected = (payload as { meta: { hash: string } }).meta.hash
+        const actual = await sha256Hex(JSON.stringify(rawData))
+        if (!actual || actual !== expected) {
+          setImportErrors(["El archivo fue modificado o no coincide con su hash."])
+          toast.error("Importacion con errores")
+          return
+        }
+      }
+      const result = validateImportData(rawData)
       if (!result.ok) {
         setImportErrors(result.errors)
         toast.error("Importacion con errores")
@@ -260,7 +301,12 @@ export default function KanbanPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
+    <main
+      className={cn(
+        "min-h-screen bg-background p-4 md:p-8",
+        godMode && "godmode-glow"
+      )}
+    >
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -312,7 +358,12 @@ export default function KanbanPage() {
               onChange={handleImportChange}
             />
             <ThemeToggle />
-            <div className="flex items-center gap-2 rounded-md border px-3 py-2">
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-md border px-3 py-2 transition-shadow",
+                godMode && "godmode-switch-glow"
+              )}
+            >
               <Switch
                 checked={godMode}
                 onCheckedChange={setGodMode}
@@ -395,6 +446,15 @@ export default function KanbanPage() {
 
           <TabsContent value="audit">
             <div className="flex flex-col gap-4">
+              {logChainStatus.ok ? null : (
+                <Alert variant="destructive">
+                  <AlertTitle>Cadena de auditoria rota</AlertTitle>
+                  <AlertDescription>
+                    Se detecto un cambio en el historial. Revisa la integridad de los logs
+                    (entrada #{logChainStatus.index + 1}).
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="w-56">
                   <Select

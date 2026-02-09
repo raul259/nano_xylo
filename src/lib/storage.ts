@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid"
 
 import type { AuditAction, AuditLog, BoardData, Priority, Task, TaskStatus } from "@/types"
+import { createPublicId, fnv1a } from "@/lib/hash"
 import { boardDataSchema, PRIORITIES, TASK_STATUSES } from "@/lib/validation"
 
 const STORAGE_KEY = "micro-trello-data"
@@ -78,8 +79,14 @@ const normalizeTask = (raw: LegacyTask): Task => {
         ? raw.dueDate
         : undefined
 
+  const id = raw.id && typeof raw.id === "string" ? raw.id : uuidv4()
+
   return {
-    id: raw.id && typeof raw.id === "string" ? raw.id : uuidv4(),
+    id,
+    publicId:
+      typeof raw.publicId === "string" && raw.publicId
+        ? raw.publicId
+        : createPublicId(id),
     titulo,
     descripcion,
     prioridad,
@@ -118,19 +125,84 @@ const normalizeLog = (raw: LegacyLog): AuditLog => {
           ? raw.taskTitle
           : "Sin titulo",
     userLabel: typeof raw.userLabel === "string" ? raw.userLabel : "Alumno/a",
+    prevHash: typeof raw.prevHash === "string" ? raw.prevHash : undefined,
+    hash: typeof raw.hash === "string" ? raw.hash : undefined,
     changes: Array.isArray(raw.changes) ? raw.changes : undefined,
   }
+}
+
+const buildLogHash = (log: Omit<AuditLog, "hash">) => {
+  return fnv1a(
+    JSON.stringify({
+      timestamp: log.timestamp,
+      accion: log.accion,
+      taskId: log.taskId,
+      taskTitulo: log.taskTitulo,
+      userLabel: log.userLabel,
+      changes: log.changes,
+      prevHash: log.prevHash,
+    })
+  )
+}
+
+const ensureLogChain = (logs: AuditLog[]) => {
+  const nextLogs = [...logs]
+  let prevHash: string | undefined
+
+  for (let i = nextLogs.length - 1; i >= 0; i -= 1) {
+    const log = nextLogs[i]
+    const withPrev: Omit<AuditLog, "hash"> = {
+      ...log,
+      prevHash,
+    }
+    const hash = buildLogHash(withPrev)
+    nextLogs[i] = { ...withPrev, hash }
+    prevHash = hash
+  }
+
+  return nextLogs
+}
+
+export const verifyLogChain = (
+  logs: AuditLog[]
+): { ok: true } | { ok: false; index: number } => {
+  let prevHash: string | undefined
+
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
+    const log = logs[i]
+    if (log.prevHash !== prevHash) {
+      return { ok: false, index: i }
+    }
+    const expected = buildLogHash({
+      ...log,
+      prevHash,
+    })
+    if (log.hash !== expected) {
+      return { ok: false, index: i }
+    }
+    prevHash = expected
+  }
+
+  return { ok: true }
 }
 
 const normalizeBoardData = (data: BoardData): BoardData => {
   return {
     tasks: (data.tasks ?? []).map(normalizeTask),
-    logs: (data.logs ?? []).map(normalizeLog),
+    logs: ensureLogChain((data.logs ?? []).map(normalizeLog)),
   }
 }
 
-export const saveToStorage = (data: BoardData) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+export const saveToStorage = (data: BoardData): BoardData => {
+  const normalized: BoardData = {
+    tasks: data.tasks.map((task) => ({
+      ...task,
+      publicId: task.publicId || createPublicId(task.id),
+    })),
+    logs: ensureLogChain(data.logs),
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+  return normalized
 }
 
 export const getFromStorage = (): BoardData => {
@@ -148,6 +220,7 @@ export const getFromStorage = (): BoardData => {
 type AuditLogOptions = {
   includeId?: boolean
   forceChanges?: AuditLog["changes"]
+  prevHash?: string
 }
 
 const buildDiff = (
@@ -205,14 +278,21 @@ export const createAuditLog = (
 ): AuditLog => {
   const changes = options?.forceChanges ?? buildDiff(accion, oldTask, newTask, options?.includeId)
 
-  return {
+  const baseLog: Omit<AuditLog, "hash"> = {
     id: uuidv4(),
     timestamp: new Date().toISOString(),
     accion,
     taskId,
     taskTitulo,
     userLabel: "Alumno/a",
+    prevHash: options?.prevHash,
     changes,
+  }
+  const hash = buildLogHash(baseLog)
+
+  return {
+    ...baseLog,
+    hash,
   }
 }
 
