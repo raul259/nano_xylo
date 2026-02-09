@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nano Xylo
 
-## Getting Started
+## ¿Qué es?
+Nano Xylo es una app sencilla tipo Kanban para organizar misiones y darles seguimiento. La idea es mantenerlo claro y rápido de usar: crear tareas, moverlas entre columnas y revisar la auditoría de cambios.
 
-First, run the development server:
-
+## Cómo usarla
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Luego abre el navegador y crea una misión con el botón “Nueva misión”.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Qué puedes hacer
+- Crear, editar y eliminar misiones.
+- Arrastrar tarjetas entre columnas.
+- Buscar por texto o con filtros rápidos (tag, prioridad, fechas, estimación).
+- Exportar e importar tus datos en JSON.
+- Ver auditoría de cambios con un resumen rápido.
+- Usar el “Modo Dios” para campos extra de evaluación.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Detalles importantes
+- La fecha límite no permite fechas anteriores a hoy.
+- El arrastre de tarjetas evita el zoom o distorsión visual.
+- Todo queda guardado en el navegador (localStorage).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Capturas
+- `public/capturas/tablero.png`
+- `public/capturas/formulario.png`
+- `public/capturas/auditoria.png`
 
-## Learn More
+## link de Vercel
 
-To learn more about Next.js, take a look at the following resources:
+## Checklist de requisitos
+- [x] 3 columnas fijas Todo / Doing / Done
+- [x] Crear, editar y borrar tareas
+- [x] Drag & Drop entre columnas
+- [x] Modelo de datos completo (id, título, descripción, prioridad, tags, estimación, fechas, estado)
+- [x] Auditoría CREATE / UPDATE / DELETE / MOVE con diff
+- [x] Tabla de auditoría con filtros y botón “Copiar resumen”
+- [x] Búsqueda avanzada con operadores (tag, p, due, est)
+- [x] Persistencia en localStorage
+- [x] Exportar / Importar JSON con validación y regeneración de IDs
+- [x] Modo Dios con observaciones, rúbrica y panel resumen
+- [x] Componentes Shadcn usados (Dialog, Select, Badge, Tabs, Table, Toast, AlertDialog)
+- [x] Validación con Zod y TypeScript sin any
+- [x] Validación de fecha límite (no permite fechas pasadas)
+- [x] Arrastre de tarjetas sin zoom ni distorsión
+- [x] Mínimo 10 commits con mensajes significativos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Decisiones técnicas
+1. El estado principal vive en `BoardData` y se persiste en `localStorage` para evitar usar BDD.
+2. La auditoría se genera en `lib/storage.ts` con un diff por campo para que los cambios se entiendan rápido.
+3. La búsqueda avanzada se parsea en `lib/query.ts` para separar lógica de UI y evitar filtros “a mano”.
+4. La importación valida con Zod y si hay IDs repetidos los regenera y registra un log de auditoría.
+5. El Modo Dios se activó con un switch y añade campos extra sin romper el flujo normal del formulario.
+6. Se prefirieron componentes Shadcn para mantener consistencia visual y accesibilidad base.
+7. La UI muestra estados vacíos claros para no dejar pantallas “muertas”.
+8. La fecha límite se valida para no aceptar fechas anteriores a hoy.
+9. El drag usa solo traslación para evitar escalado visual de las tarjetas.
