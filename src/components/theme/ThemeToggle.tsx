@@ -19,7 +19,7 @@ export function ThemeToggle() {
       <div className="flex items-center gap-2 rounded-md border px-3 py-2">
         <div className="h-5 w-9 rounded-full border bg-muted" />
         <span className="text-xs font-semibold uppercase tracking-wide">
-          Tema
+          
         </span>
       </div>
     )
@@ -40,7 +40,7 @@ export function ThemeToggle() {
         aria-label="Cambiar tema claro u oscuro"
       />
       <span className="text-xs font-semibold uppercase tracking-wide">
-        Tema
+        
       </span>
     </div>
   )
